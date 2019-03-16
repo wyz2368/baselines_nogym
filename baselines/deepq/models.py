@@ -135,6 +135,9 @@ def build_q_func(network, hiddens=[256], dueling=True, layer_norm=False, **netwo
                 q_out = state_score + action_scores_centered
             else:
                 q_out = action_scores
+
+            # if training_flag == 1:  # Attacker is training
+            #     q_out = q_out * mask
             return q_out
 
     return q_func_builder

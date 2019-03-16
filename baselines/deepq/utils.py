@@ -1,5 +1,7 @@
 from baselines.common.input import observation_input
 from baselines.common.tf_util import adjust_shape
+import numpy as np
+import tensorflow as tf
 
 # ================================================================
 # Placeholders
@@ -37,6 +39,9 @@ class PlaceholderTfInput(TfInput):
     def make_feed_dict(self, data):
         return {self._placeholder: adjust_shape(self._placeholder, data)}
 
+def is_placeholder(x):
+    return type(x) is tf.Tensor and len(x.op.inputs) == 0
+
 
 class ObservationInput(PlaceholderTfInput):
     def __init__(self, observation_space, name=None):
@@ -55,5 +60,36 @@ class ObservationInput(PlaceholderTfInput):
 
     def get(self):
         return self.processed_inpt
+
+# Only work for the attacker.
+# TODO: does not finish, change binary representation to -100 representation.
+def mask_generator_att(env, obses):
+    batch_size = np.shape(obses)[0]
+    num_nodes = env.G.number_of_nodes()
+    mask = []
+    for i in np.arange(batch_size):
+        state = obses[i][:num_nodes]
+        G_cur = env.G_reserved.copy()
+        for j in G_cur.nodes:
+            G_cur.nodes[j]['state'] = state[j-1]
+
+        _mask = env.attacker.get_att_canAttack_mask(G_cur)
+
+        mask.append(_mask)
+
+    return np.array(mask)
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

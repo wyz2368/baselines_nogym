@@ -19,6 +19,8 @@ from baselines.deepq.utils import ObservationInput
 from baselines.common.tf_util import get_session
 from baselines.deepq.models import build_q_func
 
+from baselines.deepq.utils import mask_generator_att
+
 
 class ActWrapper(object):
     def __init__(self, act, act_params):
@@ -190,29 +192,48 @@ def learn(env,
     sess = get_session()
     set_global_seeds(seed)
 
+    training_flag = env.training_flag
+    if training_flag == 0:
+        num_actions = env.act_dim_def()
+    elif training_flag == 1:
+        num_actions = env.act_dim_att()
+    else:
+        raise ValueError("Training flag error!")
+
     q_func = build_q_func(network, **network_kwargs)
 
     # capture the shape outside the closure so that the env object is not serialized
     # by cloudpickle when serializing make_obs_ph
 
-    observation_space = env.observation_space
+
+    # TODO: make everythin smooth This is shape rather than scalar.
+    if training_flag == 0:
+        observation_space_shape = [env.obs_dim_def()]
+    elif training_flag == 1:
+        observation_space_shape = [env.obs_dim_att()]
+    else:
+        raise ValueError("Training flag error!")
+
     def make_obs_ph(name):
-        return ObservationInput(observation_space, name=name)
+        return U.BatchInput(observation_space_shape, name=name)
+
+    # #TODO: Modification to be done
 
     act, train, update_target, debug = deepq.build_train(
         make_obs_ph=make_obs_ph,
         q_func=q_func,
-        num_actions=env.action_space.n,
+        num_actions=num_actions, #TODO: check action space
         optimizer=tf.train.AdamOptimizer(learning_rate=lr),
         gamma=gamma,
         grad_norm_clipping=10,
-        param_noise=param_noise
+        param_noise=param_noise,
+        training_flag=training_flag,
     )
 
     act_params = {
         'make_obs_ph': make_obs_ph,
         'q_func': q_func,
-        'num_actions': env.action_space.n,
+        'num_actions': num_actions,
     }
 
     act = ActWrapper(act, act_params)
@@ -239,7 +260,7 @@ def learn(env,
 
     episode_rewards = [0.0]
     saved_mean_reward = None
-    obs = env.reset()
+    obs = env.reset_everything()
     reset = True
 
     with tempfile.TemporaryDirectory() as td:
@@ -276,7 +297,16 @@ def learn(env,
                 kwargs['reset'] = reset
                 kwargs['update_param_noise_threshold'] = update_param_noise_threshold
                 kwargs['update_param_noise_scale'] = True
-            action = act(np.array(obs)[None], update_eps=update_eps, **kwargs)[0]
+            #TODO: add mask to act
+            if training_flag == 0: # the defender is training
+                mask_t = np.zeros((batch_size, num_actions))
+            elif training_flag == 1:
+                # mask_t should be a function of obs
+                mask_t = mask_generator_att(env, obs)
+            else:
+                raise ValueError("training flag error!")
+
+            action = act(np.array(obs)[None], mask_t, update_eps=update_eps, **kwargs)[0]
             env_action = action
             reset = False
             new_obs, rew, done, _ = env.step(env_action)
@@ -286,7 +316,7 @@ def learn(env,
 
             episode_rewards[-1] += rew
             if done:
-                obs = env.reset()
+                obs = env.reset_everything_with_return()
                 episode_rewards.append(0.0)
                 reset = True
 
@@ -298,7 +328,11 @@ def learn(env,
                 else:
                     obses_t, actions, rewards, obses_tp1, dones = replay_buffer.sample(batch_size)
                     weights, batch_idxes = np.ones_like(rewards), None
-                td_errors = train(obses_t, actions, rewards, obses_tp1, dones, weights)
+                # TODO: add mask_tp1 to train
+                # mask_t = mask_generator_att(env,obses_t)
+                mask_tp1 = mask_generator_att(env,obses_tp1) #TODO: check if we need mask for t here.
+                td_errors = train(obses_t, actions, rewards, obses_tp1, dones, weights, mask_tp1)
+                # TODO: Modification Done
                 if prioritized_replay:
                     new_priorities = np.abs(td_errors) + prioritized_replay_eps
                     replay_buffer.update_priorities(batch_idxes, new_priorities)

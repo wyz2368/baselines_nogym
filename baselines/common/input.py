@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+#TODO: comment gym
 from gym.spaces import Discrete, Box, MultiDiscrete
 
 def observation_placeholder(ob_space, batch_size=None, name='Ob'):
@@ -21,6 +22,7 @@ def observation_placeholder(ob_space, batch_size=None, name='Ob'):
     tensorflow placeholder tensor
     '''
 
+    # TODO: Comment gym
     assert isinstance(ob_space, Discrete) or isinstance(ob_space, Box) or isinstance(ob_space, MultiDiscrete), \
         'Can only deal with Discrete and Box observation spaces for now'
 
