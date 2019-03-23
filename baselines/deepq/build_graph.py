@@ -187,8 +187,8 @@ def build_act(make_obs_ph, q_func, num_actions, training_flag, scope="deepq", re
 
         q_values = q_func(observations_ph.get(), num_actions, scope="q_func")
 
-        # TODO: When attacker is training, mask illegal actions
         # TODO: check the type and shape for q_values and random_actions.
+        # TODO: check q_values and mask shape match.
         if training_flag == 1:
             q_values = q_values + mask_ph
         deterministic_actions = tf.argmax(q_values, axis=1)
@@ -198,7 +198,7 @@ def build_act(make_obs_ph, q_func, num_actions, training_flag, scope="deepq", re
         if training_flag == 0:
             random_actions = tf.random_uniform(tf.stack([batch_size]), minval=0, maxval=num_actions, dtype=tf.int64)
         elif training_flag == 1:
-            q_vals = tf.random.uniform(shape=[batch_size,num_actions]) + mask_ph
+            q_vals = tf.random.uniform(shape=[batch_size,num_actions],dtype=tf.float32) + mask_ph
             random_actions = tf.argmax(q_vals, axis=1)
         else:
             raise ValueError('Training flag is abnormal within the build_graph.')
@@ -423,7 +423,6 @@ def build_train(make_obs_ph, q_func, num_actions, optimizer, training_flag, grad
 
         # target q network evalution
         q_tp1 = q_func(obs_tp1_input.get(), num_actions, scope="target_q_func")
-
         target_q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=tf.get_variable_scope().name + "/target_q_func")
 
         # q scores for actions which we know were selected in the given state.
@@ -491,6 +490,7 @@ def build_train(make_obs_ph, q_func, num_actions, optimizer, training_flag, grad
         )
         update_target = U.function([], [], updates=[update_target_expr])
 
+        #This q-values has not been masked.
         q_values = U.function([obs_t_input], q_t) # TODO: check this is correct.
 
         return act_f, train, update_target, {'q_values': q_values}

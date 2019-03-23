@@ -14,3 +14,4 @@ def load_action(path, game):
         load_path=path
     )
     return act
+

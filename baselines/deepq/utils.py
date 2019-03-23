@@ -62,7 +62,8 @@ class ObservationInput(PlaceholderTfInput):
         return self.processed_inpt
 
 # Only work for the attacker.
-# TODO: does not finish, change binary representation to -100 representation.
+
+#TODO: make sure data type is float32
 def mask_generator_att(env, obses):
     batch_size = np.shape(obses)[0]
     num_nodes = env.G.number_of_nodes()
@@ -77,7 +78,8 @@ def mask_generator_att(env, obses):
 
         mask.append(_mask)
 
-    return np.array(mask)
+    return np.array(mask, dtype=np.float32)
+
 
 
 

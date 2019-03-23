@@ -104,6 +104,7 @@ def build_q_func(network, hiddens=[256], dueling=True, layer_norm=False, **netwo
 
     def q_func_builder(input_placeholder, num_actions, scope, reuse=False):
         with tf.variable_scope(scope, reuse=reuse):
+            #TODO: THIS EXPRESS ONLY WORKS FOR MODELS IN COMMONS.
             latent = network(input_placeholder)
             if isinstance(latent, tuple):
                 if latent[1] is not None:
@@ -112,7 +113,7 @@ def build_q_func(network, hiddens=[256], dueling=True, layer_norm=False, **netwo
 
             latent = layers.flatten(latent)
 
-            with tf.variable_scope("action_value"):
+            with tf.variable_scope("action_value"): #If dueling is not true, it is still like we add another 256 layer.
                 action_out = latent
                 for hidden in hiddens:
                     action_out = layers.fully_connected(action_out, num_outputs=hidden, activation_fn=None)
@@ -136,8 +137,7 @@ def build_q_func(network, hiddens=[256], dueling=True, layer_norm=False, **netwo
             else:
                 q_out = action_scores
 
-            # if training_flag == 1:  # Attacker is training
-            #     q_out = q_out * mask
             return q_out
 
     return q_func_builder
+

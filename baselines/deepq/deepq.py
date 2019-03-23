@@ -206,7 +206,7 @@ def learn(env,
     # by cloudpickle when serializing make_obs_ph
 
 
-    # TODO: make everythin smooth This is shape rather than scalar.
+    # TODO: make everythin smooth.
     if training_flag == 0:
         observation_space_shape = [env.obs_dim_def()]
     elif training_flag == 1:
@@ -222,7 +222,7 @@ def learn(env,
     act, train, update_target, debug = deepq.build_train(
         make_obs_ph=make_obs_ph,
         q_func=q_func,
-        num_actions=num_actions, #TODO: check action space
+        num_actions=num_actions,
         optimizer=tf.train.AdamOptimizer(learning_rate=lr),
         gamma=gamma,
         grad_norm_clipping=10,
@@ -260,7 +260,7 @@ def learn(env,
 
     episode_rewards = [0.0]
     saved_mean_reward = None
-    obs = env.reset_everything()
+    obs = env.reset_everything_with_return() #TODO: check type and shape of obs. should be [0.2, 0.4, 0.4] numpy
     reset = True
 
     with tempfile.TemporaryDirectory() as td:
@@ -299,7 +299,7 @@ def learn(env,
                 kwargs['update_param_noise_scale'] = True
             #TODO: add mask to act
             if training_flag == 0: # the defender is training
-                mask_t = np.zeros((batch_size, num_actions))
+                mask_t = np.zeros(shape=(1, num_actions), dtype=np.float32)
             elif training_flag == 1:
                 # mask_t should be a function of obs
                 mask_t = mask_generator_att(env, obs)
@@ -307,6 +307,7 @@ def learn(env,
                 raise ValueError("training flag error!")
 
             action = act(np.array(obs)[None], mask_t, update_eps=update_eps, **kwargs)[0]
+            #TODO: Modification done.
             env_action = action
             reset = False
             new_obs, rew, done, _ = env.step(env_action)
@@ -330,7 +331,12 @@ def learn(env,
                     weights, batch_idxes = np.ones_like(rewards), None
                 # TODO: add mask_tp1 to train
                 # mask_t = mask_generator_att(env,obses_t)
-                mask_tp1 = mask_generator_att(env,obses_tp1) #TODO: check if we need mask for t here.
+                if training_flag == 0:
+                    mask_tp1 = np.zeros(shape=(batch_size, num_actions), dtype=np.float32)
+                elif training_flag == 1:
+                    mask_tp1 = mask_generator_att(env,obses_tp1) #TODO: check if we need mask for t here.
+                else:
+                    raise ValueError("training flag error!")
                 td_errors = train(obses_t, actions, rewards, obses_tp1, dones, weights, mask_tp1)
                 # TODO: Modification Done
                 if prioritized_replay:

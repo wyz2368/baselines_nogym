@@ -460,7 +460,7 @@ class TfInput(object):
         """
         raise NotImplemented()
 
-    def make_feed_dict(data):
+    def make_feed_dict(self, data):
         """Given data input it to the placeholder(s)."""
         raise NotImplemented()
 
