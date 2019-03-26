@@ -22,6 +22,7 @@ from baselines.deepq.models import build_q_func
 from baselines.deepq.utils import mask_generator_att
 
 
+
 class ActWrapper(object):
     def __init__(self, act, act_params):
         self._act = act
