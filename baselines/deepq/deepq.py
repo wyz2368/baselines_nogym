@@ -227,7 +227,7 @@ def learn(env,
         gamma=gamma,
         grad_norm_clipping=10,
         param_noise=param_noise,
-        training_flag=training_flag,
+        training_flag=training_flag
     )
 
     act_params = {
